@@ -1,0 +1,14 @@
+model:
+  name: resnet50
+  task: land_cover_classification
+  input_size: 224
+  num_classes: 10
+  pretrained: true
+  freeze_backbone: true
+
+training:
+  batch_size: 32
+  epochs: 10
+  learning_rate: 0.001
+  validation_fraction: 0.10
+  test_fraction: 0.10

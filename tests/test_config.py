@@ -1,11 +1,14 @@
 from pathlib import Path
 
-from forestwatch.config import CONFIG_DIR, load_yaml_config
+import pytest
+
+from forestwatch.config import load_yaml_config
 
 
 def test_all_phase1_configs_exist() -> None:
     expected = {"model.yaml", "detection.yaml", "network.yaml", "study_area.yaml"}
-    assert {path.name for path in CONFIG_DIR.glob("*.yaml")} == expected
+    config_dir = Path(__file__).resolve().parents[1] / "configs"
+    assert {path.name for path in config_dir.glob("*.yaml")} == expected
 
 
 def test_model_config_is_valid_mapping() -> None:
@@ -41,5 +44,9 @@ def test_network_config_contains_priority_order() -> None:
     assert config["network"]["routing"]["algorithm"] == "dijkstra"
 
 
-def test_project_root_is_present() -> None:
-    assert Path(CONFIG_DIR).parent.is_dir()
+def test_loader_rejects_path_traversal_and_non_yaml() -> None:
+    with pytest.raises(ValueError):
+        load_yaml_config("../configs/model.yaml")
+
+    with pytest.raises(ValueError):
+        load_yaml_config("model.txt")

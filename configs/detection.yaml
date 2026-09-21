@@ -1,0 +1,10 @@
+detection:
+  forest_class: Forest
+  target_non_forest_classes:
+    - AnnualCrop
+    - Pasture
+    - Industrial
+    - Residential
+  confidence_threshold: 0.70
+  patch_size_pixels: 64
+  sentinel_resolution_meters: 10

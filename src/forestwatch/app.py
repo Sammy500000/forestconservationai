@@ -28,8 +28,8 @@ class HealthHandler(BaseHTTPRequestHandler):
             },
         )
 
-    def log_message(self, format: str, *args: object) -> None:
-        LOGGER.info("http | " + format, *args)
+    def log_message(self, format_string: str, *args: object) -> None:
+        LOGGER.info("http | " + format_string, *args)
 
     def _write_json(self, status: int, payload: dict[str, object]) -> None:
         body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
@@ -40,7 +40,7 @@ class HealthHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def main() -> None:
+def main() -> int:
     configure_logging()
 
     host = os.getenv("FORESTWATCH_APP_HOST", "127.0.0.1")
@@ -58,3 +58,5 @@ def main() -> None:
         LOGGER.info("shutdown requested")
     finally:
         server.server_close()
+
+    return 0

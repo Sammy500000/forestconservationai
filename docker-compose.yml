@@ -38,7 +38,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "mosquitto_sub -h 127.0.0.1 -p 1883 -t '$$SYS/broker/uptime' -C 1 -W 3 >/dev/null 2>&1"
+          "mosquitto_pub -h 127.0.0.1 -p 1883 -t healthcheck -n -q 0"
         ]
       interval: 10s
       timeout: 5s

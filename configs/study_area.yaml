@@ -1,0 +1,7 @@
+study_area:
+  name: placeholder
+  description: "Set the final study area before Phase 4."
+  geometry_file: data/aoi/study_area.geojson
+  baseline_date: "2019-01-01"
+  target_date: "2024-01-01"
+  max_cloud_cover_percent: 20

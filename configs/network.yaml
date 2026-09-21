@@ -1,0 +1,15 @@
+network:
+  mqtt:
+    host: mosquitto
+    port: 1883
+    protocol: mqtt
+    topic_prefix: forestwatch/events
+
+  priorities:
+    CRITICAL: 0
+    HIGH: 1
+    MEDIUM: 2
+    LOW: 3
+
+  routing:
+    algorithm: dijkstra

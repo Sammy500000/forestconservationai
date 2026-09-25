@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "forestwatch"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local-first forest conservation monitoring and priority-aware early warning research prototype."
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
@@ -19,6 +19,15 @@ dependencies = [
 dev = [
   "pytest>=8.3,<9",
   "ruff>=0.8,<1"
+]
+ml = [
+  "torch>=2.7,<3",
+  "torchvision>=0.22,<1",
+  "huggingface_hub>=0.30,<2",
+  "safetensors>=0.4,<1",
+  "scikit-learn>=1.5,<2",
+  "matplotlib>=3.8,<4",
+  "numpy>=1.26,<3"
 ]
 
 [project.scripts]

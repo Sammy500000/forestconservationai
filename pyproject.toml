@@ -7,7 +7,7 @@ name = "forestwatch"
 version = "0.1.0"
 description = "Local-first forest conservation monitoring and priority-aware early warning research prototype."
 readme = "README.md"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12,<3.14"
 license = { text = "MIT" }
 authors = [{ name = "Forest Conservation AI Team" }]
 dependencies = [

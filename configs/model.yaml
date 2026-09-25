@@ -3,8 +3,20 @@ model:
   task: land_cover_classification
   input_size: 224
   num_classes: 10
-  pretrained: true
+  imagenet_pretrained: true
   freeze_backbone: true
+
+checkpoint:
+  source: huggingface
+  repo_id: cm93/resnet50-eurosat
+  filename: model.safetensors
+  revision: main
+  preprocessing:
+    resize_short_edge: 232
+    crop_size: 224
+    interpolation: bicubic
+    mean: [0.3445, 0.3803, 0.4077]
+    std: [0.0915, 0.0652, 0.0553]
 
 training:
   batch_size: 32
@@ -12,3 +24,4 @@ training:
   learning_rate: 0.001
   validation_fraction: 0.10
   test_fraction: 0.10
+  seed: 42

@@ -1,4 +1,4 @@
-from datetime import timezone
+from datetime import UTC
 
 import pytest
 from pydantic import ValidationError
@@ -17,7 +17,7 @@ def test_forest_event_contract() -> None:
     assert event.priority is AlertPriority.HIGH
     assert event.event_type is EventType.FOREST_LOSS_CANDIDATE
     assert event.detected_at.tzinfo is not None
-    assert event.detected_at.astimezone(timezone.utc).tzinfo == timezone.utc
+    assert event.detected_at.astimezone(UTC).tzinfo == UTC
 
 
 def test_coordinates_are_bounded() -> None:

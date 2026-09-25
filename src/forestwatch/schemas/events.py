@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import IntEnum, StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -35,12 +35,12 @@ class ForestEvent(BaseModel):
     detected_at: datetime
 
     @classmethod
-    def example(cls) -> "ForestEvent":
+    def example(cls) -> ForestEvent:
         return cls(
             event_id="PHASE1-EXAMPLE-0001",
             event_type=EventType.FOREST_LOSS_CANDIDATE,
             priority=AlertPriority.HIGH,
             confidence=0.90,
             location=Coordinates(latitude=0.0, longitude=0.0),
-            detected_at=datetime.now(timezone.utc),
+            detected_at=datetime.now(UTC),
         )

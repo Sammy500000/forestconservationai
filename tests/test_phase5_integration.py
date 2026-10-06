@@ -109,3 +109,5 @@ def test_concurrent_in_memory_delivery() -> None:
         "control_room",
     }
     assert all(result.event_id == event.event_id for result in results)
+    assert all(result.path[0] == "forest_hub" for result in results)
+    assert all(result.delivered_at.tzinfo is not None for result in results)

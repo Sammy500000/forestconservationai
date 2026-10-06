@@ -32,16 +32,20 @@ class _MarkerTransform:
         return tensor
 
 
-def test_detection_pipeline_uses_before_after_predictions_and_mask(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_detection_pipeline_uses_before_after_predictions_and_mask(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     root = tmp_path / "forest_change"
     for part in ("A", "B", "label"):
         (root / "images" / "test" / part).mkdir(parents=True)
+
     before = Image.new("RGB", (128, 64), (0, 0, 0))
     after = Image.new("RGB", (128, 64), (0, 0, 0))
-    before.putpixel((0, 0), (0, 0, 0))
     after.putpixel((0, 0), (3, 0, 0))
     mask = Image.new("L", (128, 64), 0)
     mask.paste(255, (0, 0, 64, 64))
+
     before_path = root / "images" / "test" / "A" / "sample.png"
     after_path = root / "images" / "test" / "B" / "sample.png"
     mask_path = root / "images" / "test" / "label" / "sample.png"
@@ -57,6 +61,7 @@ def test_detection_pipeline_uses_before_after_predictions_and_mask(tmp_path: Pat
         discover_examples(root)[0],
         device=torch.device("cpu"),
     )
+
     assert result["candidate_count"] == 1
     assert result["confusion_matrix"] == {"tn": 1, "fp": 0, "fn": 0, "tp": 1}
     assert result["f1"] == pytest.approx(1.0)
@@ -78,6 +83,7 @@ def test_event_from_candidate_has_required_metadata() -> None:
     )
     assert event.before_class == "Forest"
     assert event.after_class == "AnnualCrop"
+    assert event.sample_id == "sample"
     assert event.patch_row == 2
     assert event.patch_column == 3
 

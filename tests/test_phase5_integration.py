@@ -9,7 +9,6 @@ from PIL import Image
 
 from forestwatch.detection.data import discover_examples
 from forestwatch.detection.pipeline import analyze_example
-from forestwatch.ml.constants import EUROSAT_CHECKPOINT_CLASSES
 from forestwatch.networking.integration import deliver_in_memory_concurrently
 from forestwatch.networking.router import PriorityRouter
 from forestwatch.networking.topology import build_default_topology

@@ -2,7 +2,7 @@
 
 A reproducible, local-first research prototype for satellite-based forest-loss screening and priority-aware early warning.
 
-The project follows the supplied project materials: use transfer learning for land-cover classification, compare imagery from different dates to identify candidate forest-to-nonforest transitions, and later connect those events to a publish/subscribe notification layer with prioritized routing.
+The project follows the supplied project materials: use transfer learning for land-cover classification, compare imagery from different dates to identify candidate forest-to-nonforest transitions, and connect those events to a publish/subscribe notification layer with prioritized routing.
 
 ## Phase 1 status
 
@@ -72,7 +72,35 @@ Expected output:
 
 ### Current scope
 
-Phase 3 does not train a segmentation model. The binary masks are used as independent reference data for later evaluation. Model inference over the real benchmark will be wired in the end-to-end phase after the dataset is present locally.
+Phase 3 does not train a segmentation model. The binary masks are used as independent reference data for later evaluation. Model inference over the real benchmark will be wired in the end-to-end integration phase after the dataset is present locally.
+
+## Phase 4 status — complete
+
+Phase 4 implements the priority-aware networking layer using a small weighted graph, Dijkstra shortest-path routing, stable priority ordering, concurrent notification delivery, and compact network metrics.
+
+The implementation uses:
+
+- NetworkX for weighted shortest-path routing.
+- Python priority-queue primitives for alert ordering.
+- Python asyncio for concurrent fan-out.
+- Paho MQTT adapters for the existing local Mosquitto broker.
+- A broker-independent smoke verifier so the networking logic can be tested without a running broker.
+
+### Phase 4 verification
+
+Run:
+
+    python scripts/verify_phase4.py
+
+Expected output:
+
+    Phase 4 smoke verification passed.
+    Priority ordering: passed
+    Dijkstra shortest path: passed
+    Concurrent delivery: passed
+    Network metrics: passed
+
+The topology is intentionally deterministic for the research prototype. Event priority controls queue order; Dijkstra selects the minimum-cost path; concurrent delivery fans one event out to multiple recipients.
 
 ## License
 

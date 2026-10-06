@@ -80,12 +80,21 @@ def _transform_bounds(
 
 
 def _intersect_window(dataset: Any, window: Window) -> Window | None:
-    """Intersect a requested window with the dataset extent."""
-    raster_window = Window(0, 0, dataset.width, dataset.height)
-    try:
-        return window.intersection(raster_window)
-    except ValueError:
+    """Return the intersection with the raster extent, if non-empty."""
+    raster_left = 0.0
+    raster_top = 0.0
+    raster_right = float(dataset.width)
+    raster_bottom = float(dataset.height)
+
+    left = max(float(window.col_off), raster_left)
+    top = max(float(window.row_off), raster_top)
+    right = min(float(window.col_off + window.width), raster_right)
+    bottom = min(float(window.row_off + window.height), raster_bottom)
+
+    if right <= left or bottom <= top:
         return None
+
+    return Window(left, top, right - left, bottom - top)
 
 
 def validate_event_bounds(

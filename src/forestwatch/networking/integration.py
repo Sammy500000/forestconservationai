@@ -1,4 +1,4 @@
-"""Optional real-broker integration helpers for the end-to-end demo."""
+"""End-to-end event routing and local MQTT helpers."""
 from __future__ import annotations
 
 import time
@@ -31,27 +31,26 @@ def route_event_to_recipients(
     router: PriorityRouter | None = None,
     source: str = "forest_hub",
 ) -> list[RoutedNotification]:
-    """Compute concurrent-ready routes for all recipients."""
+    """Compute a route for every recipient."""
     active_router = router or PriorityRouter(build_default_topology())
     now = datetime.now(UTC)
-    return [
-        RoutedNotification(
-            event_id=event.event_id,
-            recipient=recipient,
-            path=active_router.route(
-                event, source=source, destination=recipient
-            ).route.path,
-            path_cost=active_router.route(
-                event, source=source, destination=recipient
-            ).route.cost,
-            delivered_at=now,
+    routed: list[RoutedNotification] = []
+    for recipient in recipients:
+        route = active_router.route(event, source=source, destination=recipient).route
+        routed.append(
+            RoutedNotification(
+                event_id=event.event_id,
+                recipient=recipient,
+                path=route.path,
+                path_cost=route.cost,
+                delivered_at=now,
+            )
         )
-        for recipient in recipients
-    ]
+    return routed
 
 
 class InMemorySubscriber:
-    """Thread-safe subscriber sink for tests and the end-to-end demo."""
+    """Thread-safe recipient sink for a deterministic end-to-end demo."""
 
     def __init__(self, name: str) -> None:
         self.name = name
@@ -69,14 +68,18 @@ def deliver_in_memory_concurrently(
     recipients: tuple[str, ...],
     router: PriorityRouter | None = None,
 ) -> list[RoutedNotification]:
-    """Deliver one event concurrently to in-memory recipient sinks."""
+    """Fan one event out concurrently to all recipients."""
     active_router = router or PriorityRouter(build_default_topology())
     sinks = {name: InMemorySubscriber(name) for name in recipients}
     barrier = Event()
     completed: Queue[RoutedNotification] = Queue()
 
     def worker(recipient: str) -> None:
-        route = active_router.route(event, source="forest_hub", destination=recipient).route
+        route = active_router.route(
+            event,
+            source="forest_hub",
+            destination=recipient,
+        ).route
         barrier.wait()
         result = RoutedNotification(
             event_id=event.event_id,
@@ -88,19 +91,28 @@ def deliver_in_memory_concurrently(
         sinks[recipient].receive(event)
         completed.put(result)
 
-    threads = [Thread(target=worker, args=(recipient,), daemon=True) for recipient in recipients]
+    threads = [
+        Thread(target=worker, args=(recipient,), daemon=True)
+        for recipient in recipients
+    ]
     for thread in threads:
         thread.start()
     barrier.set()
     for thread in threads:
         thread.join(timeout=5.0)
+
     if len(completed.queue) != len(recipients):
         raise RuntimeError("One or more concurrent notification workers did not complete.")
+
     return list(completed.queue)
 
 
-def publish_event(event: ForestEvent, *, config: MQTTConfig | None = None) -> float:
-    """Publish one ForestEvent to the local Mosquitto broker and return elapsed ms."""
+def publish_event(
+    event: ForestEvent,
+    *,
+    config: MQTTConfig | None = None,
+) -> float:
+    """Publish one event and return publish elapsed time in milliseconds."""
     publisher = MQTTPublisher(config or MQTTConfig())
     started = time.perf_counter()
     try:
@@ -115,10 +127,8 @@ def subscribe_once(
     *,
     client_id: str,
     config: MQTTConfig | None = None,
-    timeout_seconds: float = 5.0,
 ) -> MQTTSubscriber:
-    """Connect a subscriber and leave its background loop running for the caller."""
+    """Connect a subscriber and return it with its background loop running."""
     subscriber = MQTTSubscriber(config or MQTTConfig(), client_id)
     subscriber.connect()
-    time.sleep(min(timeout_seconds, 0.1))
     return subscriber

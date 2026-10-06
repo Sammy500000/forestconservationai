@@ -1,64 +1,97 @@
 # Phase 8 — Hansen Global Forest Change Validation
 
-## Objective
+Phase 8 adds an optional, local-first external validation path. It compares georeferenced ForestWatch candidate events against the official Hansen Global Forest Change (GFC) 2000–2024 v1.12 `lossyear` raster.
 
-Add an optional, local-first validation layer that compares ForestWatch's candidate forest-loss patches/events against the official Hansen Global Forest Change (GFC) 2000–2024 v1.12 `lossyear` layer.
+## What Phase 8 adds
 
-The existing project already has a working benchmark change detector and dashboard. Phase 8 must not replace or alter that critical path.
+- CRS-aware event footprints via optional `ForestEvent.bounds`.
+- A Rasterio-based GFC adapter that reads only the raster window needed for each event.
+- CRS transformation with PyProj when event and raster CRS differ.
+- Per-event loss fraction and loss-year range.
+- Aggregate GFC agreement rate over spatially comparable events.
+- Offline synthetic GeoTIFF tests and an acceptance verifier.
+- A command-line validator for real GFC rasters.
 
-## Scope
+The existing Phase 2–7 ML, detection, networking, and dashboard paths are not replaced.
 
-- Input: existing Phase 5/7 detection JSON artifact plus a user-provided local GFC `lossyear` GeoTIFF.
-- GFC source: official Hansen GFC 2024 v1.12.
-- Processing: geospatially align candidate patches to the GFC raster and calculate whether/what fraction of each patch intersects a non-zero loss-year pixel.
-- Output: per-event validation records and aggregate GFC agreement statistics. Precision/recall are not claimed because GFC presence within a candidate event is an agreement measure, not a complete reference classification.
-- No online GFW API dependency.
-- No full global GFC download.
-- No database.
-- No live Sentinel-2 acquisition.
-- No change to the existing Phase 5/6 demo behavior.
+## Data source
 
-## Important limitation
+Use the official Hansen Global Forest Change v1.12 2000–2024 `lossyear` product:
 
-GFC `lossyear` identifies forest-cover loss/stand-replacement disturbance, not the cause of that loss. Therefore the result must be described as agreement with GFC forest-loss evidence, not proof of illegal deforestation.
+    https://storage.googleapis.com/earthenginepartners-hansen/GFC-2024-v1.12/download.html
 
-## Data handling
+The `lossyear` band uses 0 for no mapped loss and 1–24 for loss years 2001–2024. GFC pixels are approximately 30 m.
 
-Users download only the GFC granule covering their study area from the official v1.12 download page and place it under `data/external/gfc/`. GFC files are intentionally excluded from Git.
+Download only the tile(s) needed for the area represented by your georeferenced candidate events. Do not commit the raster to Git.
 
-Expected file example:
+Place local rasters under:
 
-`data/external/gfc/Hansen_GFC-2024-v1.12_lossyear_<tile>.tif`
+    data/external/gfc/
 
-The implementation should also accept an arbitrary local path via CLI.
+## Required event geometry
 
-## Proposed commands
+GFC comparison is a spatial operation. A latitude/longitude point and a patch row/column are not enough to identify the patch footprint in a raster.
 
-```bash
-python scripts/validate_against_gfc.py \
-  --detections artifacts/metrics/phase5_demo.json \
-  --gfc data/external/gfc/<lossyear>.tif \
-  --output artifacts/metrics/phase8_gfc_validation.json
-```
+Phase 8 therefore adds this optional event field:
 
-## Acceptance criteria
+    bounds:
+      left: ...
+      bottom: ...
+      right: ...
+      top: ...
+      crs: "EPSG:4326"
 
-1. Existing `pytest` and Ruff checks remain green.
-2. The validator handles a missing GFC file with a clear actionable message.
-3. Raster CRS/transform are read from metadata; no hard-coded CRS is assumed.
-4. Candidate event bounds are explicitly supplied with a CRS; the validator transforms them to the raster CRS. It never invents geographic geometry from placeholder latitude/longitude.
-5. The validator reports per-event GFC loss coverage and aggregate agreement metrics.
-6. A deterministic synthetic raster/unit-test path exists, so CI does not require external GFC data.
-7. README explains the official GFC source, local download requirement, and scientific limitation.
-8. Existing Phase 5/6 behavior remains unchanged.
-9. An offline Phase 8 acceptance verifier exercises a synthetic GeoTIFF end to end.
+The validator transforms these bounds into the GFC raster CRS before reading the overlapping pixels.
 
-## Implementation order
+The existing benchmark Phase 5 demo uses non-georeferenced Forest-Change images and placeholder coordinates, so its artifact cannot be truthfully compared to a real GFC raster until a geospatial event producer supplies real event bounds.
 
-1. Add a small GFC raster adapter.
-2. Add patch-to-raster overlap calculation.
-3. Add aggregate metrics.
-4. Add CLI.
-5. Add synthetic tests.
-6. Add documentation.
-7. Run tests + Ruff + compileall.
+## Install
+
+    python -m pip install -e ".[geospatial]"
+
+## Offline acceptance verification
+
+This requires only the local optional geospatial dependencies and synthetic data:
+
+    python scripts/verify_phase8.py
+
+The verifier runs the full test suite, Ruff, source compilation, event-schema checks, and a synthetic GFC GeoTIFF validation.
+
+## Real GFC validation
+
+After generating an artifact whose candidate events contain real `bounds`:
+
+    python scripts/validate_against_gfc.py \
+      --detections artifacts/metrics/georeferenced_detections.json \
+      --gfc data/external/gfc/<lossyear>.tif
+
+Output:
+
+    artifacts/metrics/phase8_gfc_validation.json
+
+The result reports:
+
+- candidate event count
+- spatially comparable event count
+- candidates overlapping GFC loss evidence
+- agreement rate
+- mean GFC loss fraction
+- loss-year range per event
+
+## Interpretation
+
+The reported agreement rate is an overlap/agreement statistic. It is not a precision, recall, or accuracy estimate for the full GFC map because the validator is evaluating predicted candidate events against the presence of GFC loss evidence inside those event footprints.
+
+A GFC match means that the candidate overlaps mapped forest-loss/stand-replacement disturbance. It does not establish the cause of the loss or prove illegal logging, mining, or encroachment.
+
+## Scope boundary
+
+Phase 8 does not require:
+
+- the Global Forest Watch web application or API
+- the full global GFC archive
+- live Sentinel-2 acquisition
+- a database
+- a cloud deployment
+
+Those can remain future integrations.

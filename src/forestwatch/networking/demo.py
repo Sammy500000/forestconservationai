@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import asyncio
 import time
+from datetime import UTC, datetime
 
 from forestwatch.networking.metrics import DeliverySample, calculate_metrics
 from forestwatch.networking.notifications import deliver_concurrently
 from forestwatch.networking.priority import PriorityEventQueue
 from forestwatch.networking.router import PriorityRouter
 from forestwatch.networking.topology import build_default_topology
-from forestwatch.schemas.events import ForestEvent
+from forestwatch.schemas.events import AlertPriority, EventType, ForestEvent
 
 
 RECIPIENTS: tuple[str, ...] = ("node_a", "district", "control_room")
@@ -20,18 +21,13 @@ def build_demo_events() -> list[ForestEvent]:
     return [
         ForestEvent(
             event_id=f"PHASE4-DEMO-{priority.name}",
-            event_type="forest_loss_candidate",
+            event_type=EventType.FOREST_LOSS_CANDIDATE,
             priority=priority,
             confidence=0.8 + (0.04 * (3 - int(priority))),
             location={"latitude": 0.0, "longitude": 0.0},
-            detected_at=__import__("datetime").datetime.now(__import__("datetime").UTC),
+            detected_at=datetime.now(UTC),
         )
-        for priority in (
-            __import__("forestwatch.schemas.events", fromlist=["AlertPriority"]).AlertPriority.CRITICAL,
-            __import__("forestwatch.schemas.events", fromlist=["AlertPriority"]).AlertPriority.HIGH,
-            __import__("forestwatch.schemas.events", fromlist=["AlertPriority"]).AlertPriority.MEDIUM,
-            __import__("forestwatch.schemas.events", fromlist=["AlertPriority"]).AlertPriority.LOW,
-        )
+        for priority in AlertPriority
     ]
 
 

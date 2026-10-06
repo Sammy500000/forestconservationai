@@ -10,174 +10,69 @@ Phase 1 established the repository and runtime foundation.
 
 ## Phase 2 status — complete
 
-Phase 2 implements the land-cover classification layer and the fastest reproducible evaluation path.
+Phase 2 implements the land-cover classification layer and the fast reproducible evaluation path.
 
-It provides:
+## Phase 3 status — complete
 
-- EuroSAT RGB download from the official Zenodo distribution, with an MD5 checksum check.
-- Deterministic 80/10/10 train/validation/test splitting with seed `42`.
-- ResNet50 model construction using torchvision.
-- Loading of the public `cm93/resnet50-eurosat` ResNet50 checkpoint from Hugging Face in safetensors format.
-- Correct handling of the checkpoint's class-logit order, which differs from the alphabetical `ImageFolder` order.
-- Checkpoint-specific preprocessing (bicubic resize, center crop, and the checkpoint's recorded RGB mean/std).
-- Reference-compatible ImageNet preprocessing and a short optional fine-tuning path from ImageNet weights.
-- Accuracy, macro precision, macro recall, macro F1, classification report, and confusion-matrix generation.
-- A network-free Phase 2 smoke verification script so the ML code can be validated before downloading data.
+Phase 3 implements the bi-temporal detection core using the public Forest-Change benchmark as the fast, reproducible input source. The dataset provides aligned pre-change RGB images, post-change RGB images, and binary change masks. The adapter does not commit the external dataset to this repository.
 
-### Phase 2 data/model sources
+Phase 3 provides:
 
-The EuroSAT RGB dataset is the official 27,000-image RGB release from the EuroSAT project and Zenodo.
+- Dataset discovery for `images/<split>/{A,B,label}`.
+- Aligned non-overlapping 64×64 patch extraction.
+- Binary change-mask fraction calculation.
+- The project reference forest-to-nonforest candidate rule.
+- Confidence gating using both before/after model confidences.
+- Unit tests and a network-free smoke verification script.
 
-- Official project: https://github.com/phelber/EuroSAT
-- Official dataset record: https://zenodo.org/records/7711810
-- Public EuroSAT ResNet50 checkpoint: https://huggingface.co/cm93/resnet50-eurosat
+### Phase 3 source
 
-The public checkpoint is used as the default fast path. Its model card identifies it as a ResNet50 fine-tuned on EuroSAT, with 10 classes and safetensors weights. The project also retains an optional fine-tuning script for a conventional ImageNet-to-EuroSAT transfer-learning run.
+Forest-Change repository: https://github.com/zhoujinghe2025/forest-change_256
 
-## Prerequisites
+The source repository documents 334 annotated bi-temporal image pairs, approximately 30 m/pixel imagery, 256×256 processed images, binary deforestation masks, and train/validation/test splits. It is MIT licensed for academic reuse. Use its published citation when results are reported.
 
-For Phase 1 only:
+### Phase 3 data layout
 
-- Python 3.12+
-- Git
-- Docker Desktop with Docker Compose
+Place the downloaded Forest-Change dataset at:
 
-For Phase 2 ML work:
+    data/external/forest_change/
 
-- The same Python environment with the ML extra installed.
-- Internet access for the first dataset/checkpoint download.
-- A GPU is useful for optional fine-tuning but is not required for the code/smoke checks.
+Expected layout:
 
-## Installation
+    data/external/forest_change/
+    └── images/
+        ├── train/
+        │   ├── A/
+        │   ├── B/
+        │   └── label/
+        ├── val/
+        │   ├── A/
+        │   ├── B/
+        │   └── label/
+        └── test/
+            ├── A/
+            ├── B/
+            └── label/
 
-Create and activate a virtual environment:
+The repository intentionally excludes these large image files from Git.
 
-    python -m venv .venv
+### Phase 3 verification
 
-Windows PowerShell:
+Run the network-free smoke test first:
 
-    .\.venv\Scripts\Activate.ps1
+    python scripts/verify_phase3.py
 
-macOS/Linux:
+Expected output:
 
-    source .venv/bin/activate
+    Phase 3 smoke verification passed.
+    Aligned 256x256 pair -> 16 x 64x64 patches: passed
+    Binary change-mask fraction: passed
+    Forest -> non-forest candidate rule: passed
+    Confidence threshold handling: passed
 
-Install Phase 2 dependencies:
+### Current scope
 
-    python -m pip install --upgrade pip
-    python -m pip install -e ".[dev,ml]"
-
-## Phase 2 verification
-
-Run the network-free verification first:
-
-    python scripts/verify_phase2.py
-
-Expected output includes:
-
-    Phase 2 smoke verification passed.
-    ResNet50 output shape: (2, 10)
-    Deterministic split: 21600 / 2700 / 2700
-    Local safetensors load: passed
-
-## Download EuroSAT RGB
-
-Download the official RGB archive and extract it under `data/external/eurosat`:
-
-    python scripts/download_eurosat.py
-
-The resulting dataset contains the ten EuroSAT class directories.
-
-## Evaluate the public EuroSAT ResNet50 checkpoint
-
-Run:
-
-    python scripts/evaluate_eurosat.py
-
-The script downloads the dataset and public checkpoint if they are not cached, evaluates the held-out test split, and writes:
-
-    artifacts/metrics/eurosat_metrics.json
-    artifacts/metrics/eurosat_classification_report.csv
-    artifacts/figures/eurosat_confusion_matrix.png
-
-The public checkpoint uses its own recorded EuroSAT preprocessing statistics rather than ImageNet statistics. This is intentional: evaluation preprocessing must match the checkpoint that produced the weights.
-
-## Optional conventional transfer-learning run
-
-To reproduce the project reference's basic transfer-learning setup starting from ImageNet ResNet50 weights:
-
-    python scripts/finetune_eurosat.py --epochs 10
-
-For a fast local experiment, use a small epoch count:
-
-    python scripts/finetune_eurosat.py --epochs 1
-
-The default training mode freezes the ResNet50 backbone and trains only the final classifier head. Add `--unfreeze` only when a full fine-tuning run is actually needed.
-
-## Phase 1 runtime and Docker
-
-The existing Phase 1 health service and local Mosquitto broker remain unchanged:
-
-    pytest
-    python -m ruff check .
-    python -m forestwatch
-
-For Docker:
-
-    docker compose up --build
-
-The Phase 1 health endpoint is:
-
-    http://localhost:8500/healthz
-
-The local MQTT broker listens on:
-
-    localhost:1883
-
-The ML dependencies are deliberately optional so the Phase 1 application image does not need to install the large PyTorch stack.
-
-## Project layout
-
-    forestconservationai/
-    ├── configs/
-    │   ├── model.yaml
-    │   ├── detection.yaml
-    │   ├── network.yaml
-    │   └── study_area.yaml
-    ├── data/
-    │   └── README.md
-    ├── mosquitto/
-    │   └── config/
-    │       └── mosquitto.conf
-    ├── scripts/
-    │   ├── download_eurosat.py
-    │   ├── evaluate_eurosat.py
-    │   ├── finetune_eurosat.py
-    │   ├── verify_phase1.py
-    │   └── verify_phase2.py
-    ├── src/
-    │   └── forestwatch/
-    │       ├── ml/
-    │       │   ├── constants.py
-    │       │   ├── data.py
-    │       │   ├── evaluate.py
-    │       │   ├── inference.py
-    │       │   ├── model.py
-    │       │   └── __init__.py
-    │       └── ...
-    └── tests/
-        ├── test_config.py
-        ├── test_events.py
-        ├── test_health.py
-        └── test_ml_phase2.py
-
-## What Phase 2 does not do
-
-Phase 2 intentionally does not implement Sentinel-2 acquisition, bi-temporal change detection, Hansen/GFW validation, MQTT routing, concurrent notifications, or the dashboard. Those are later phases.
-
-## Next phase
-
-Phase 3 will use a bi-temporal forest-change dataset to implement candidate forest-loss detection using the Phase 2 classifier.
+Phase 3 does not train a segmentation model. The binary masks are used as independent reference data for later evaluation. Model inference over the real benchmark will be wired in the end-to-end phase after the dataset is present locally.
 
 ## License
 

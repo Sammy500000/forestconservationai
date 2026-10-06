@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from PIL import Image
 import pytest
+from PIL import Image
 
 from forestwatch.detection.change_detection import (
     ChangePrediction,
@@ -9,7 +9,11 @@ from forestwatch.detection.change_detection import (
     is_forest_loss_candidate,
 )
 from forestwatch.detection.data import ForestChangeExample
-from forestwatch.detection.patching import change_fraction, expected_patch_count, iter_aligned_patches
+from forestwatch.detection.patching import (
+    change_fraction,
+    expected_patch_count,
+    iter_aligned_patches,
+)
 
 
 def test_aligned_patching_produces_corresponding_grid() -> None:

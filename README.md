@@ -2,96 +2,91 @@
 
 A reproducible, local-first research prototype for satellite-based forest-loss screening and priority-aware early warning.
 
-## Phase 6 status — complete implementation
+## Current project status
 
-Phase 6 adds a minimal Streamlit presentation layer over the generated Phase 2–5 research artifacts.
+Phases 1–7 are complete. Phase 8 adds an optional external validation path against the official Hansen Global Forest Change (GFC) 2000–2024 v1.12 `lossyear` raster.
 
-The dashboard displays:
+The reference design uses two-date land-cover classification to flag forest-to-nonforest transitions. The supplied project abstract additionally calls for priority-aware publish/subscribe messaging, shortest-path delivery, and concurrent notifications. Those core prototype components remain unchanged by Phase 8.
 
-- EuroSAT model accuracy, macro precision, macro recall, macro F1, and confusion matrix.
-- Forest-Change before/after imagery, recorded ground-truth and prediction masks, and patch-level detection metrics.
-- Alert event ID, confidence, priority, tile coordinates, and location.
-- Shortest route, route cost, delivery status, and measured notification latency.
+## Phase 8 — Hansen GFC validation
 
-The dashboard does not run inference, change detection, routing, persistence, authentication, or network APIs. It reads generated JSON artifacts and the existing Forest-Change images only.
+Phase 8 compares generated ForestWatch candidate events against the Hansen GFC `lossyear` raster. The validator is deliberately local-first: it does not depend on the Global Forest Watch web application or API and it does not download the global GFC archive automatically.
 
-### Dashboard entry point
+Hansen GFC v1.12 covers global forest-cover change from 2000 through 2024. Its `lossyear` layer encodes stand-replacement forest loss as 0 for no loss or 1–24 for loss primarily detected in 2001–2024. The data are approximately 30 m per pixel. See the official download page:
 
-Install the dashboard extra:
+    https://storage.googleapis.com/earthenginepartners-hansen/GFC-2024-v1.12/download.html
 
-    python -m pip install -e ".[dashboard]"
+### Install
 
-Run:
+Install the optional geospatial dependencies:
 
-    streamlit run src/forestwatch/dashboard/app.py
+    python -m pip install -e ".[geospatial]"
 
-By default the dashboard reads:
+### Prepare the raster
 
-    artifacts/metrics/eurosat_metrics.json
-    artifacts/metrics/phase5_demo.json
-    data/external/forest_change
+Download only the GFC `lossyear` granule covering the study area from the official page and put it under:
 
-The sidebar allows these paths to be changed without modifying code.
+    data/external/gfc/
 
-### Generate the displayed artifacts
+GFC raster files are intentionally excluded from Git because the global archive is large.
 
-Generate EuroSAT evaluation metrics:
+### Run validation
 
-    python scripts/evaluate_eurosat.py
+    python scripts/validate_against_gfc.py \
+      --detections artifacts/metrics/phase5_demo.json \
+      --gfc data/external/gfc/<lossyear>.tif
 
-Generate the Phase 5 end-to-end results after the Forest-Change dataset is available:
+The command writes:
 
-    python scripts/run_phase5_demo.py
+    artifacts/metrics/phase8_gfc_validation.json
 
-The repository intentionally excludes external image datasets from Git.
+### Important data-contract limitation
+
+The existing Phase 5 event schema records latitude/longitude and patch row/column, but it does not yet encode a CRS-aware geographic bounding box for each candidate. Because of that, the Phase 8 CLI intentionally refuses to manufacture raster coordinates from latitude/longitude alone.
+
+This keeps the validation scientifically safe: a GFC overlap percentage must not be reported unless the event geometry can be transformed into the GFC raster CRS correctly.
+
+The geospatial validator itself already supports a raster bounding box and reads only the intersecting raster window, so a future CRS-aware event geometry adapter can be added without redesigning the validation core.
+
+### Scientific interpretation
+
+GFC `lossyear` is a forest-loss/stand-replacement disturbance reference. A match means that the candidate overlaps GFC forest-loss evidence. It does not by itself establish that the cause was illegal logging, mining, encroachment, or another specific activity.
 
 ## Verification
 
-Run the existing test suite:
+Run:
 
     pytest
-
-Run lint:
-
     python -m ruff check .
+    python -m compileall -q src
 
-Run the Phase 5 integration demo after the Forest-Change dataset is available:
+Phase 8 also has deterministic unit tests in:
 
-    python scripts/run_phase5_demo.py
+    tests/test_phase8_gfc.py
 
-Run the Phase 6 dashboard:
+These tests do not require external raster data or network access.
 
-    streamlit run src/forestwatch/dashboard/app.py
+## Scope boundary
 
-## Scope
-
-Phases 1–5 provide the model, bi-temporal detection, priority-aware networking, and end-to-end event integration. Phase 6 is presentation-only. React, FastAPI, authentication, a database, REST APIs, and live Sentinel-2/Hansen/GFW acquisition are outside the Phase 6 critical path.
+Phase 8 does not change the existing ML model, Forest-Change detector, MQTT routing, or Streamlit dashboard behavior. Live Sentinel-2 acquisition remains an optional future enhancement.
 
 ## License
 
 MIT. See LICENSE.
 
+## Earlier phase documentation
 
-## Phase 7 — Final acceptance and research artifact verification
+### Phase 6 — Dashboard
 
-Phase 7 is the finalization gate for the current prototype. It does not add new production infrastructure or live satellite acquisition. It verifies the committed ML, bi-temporal detection, priority-routing, notification, and artifact contracts together.
+The Streamlit dashboard reads generated Phase 2–5 artifacts only. Run:
 
-### Verification
+    python -m pip install -e ".[dashboard]"
+    streamlit run src/forestwatch/dashboard/app.py
+
+### Phase 7 — Final acceptance
 
 Run:
 
     python scripts/verify_phase7.py
 
-The verifier runs the repository test suite, Ruff, source compilation, configuration checks, model/detection/network smoke checks, and artifact-directory checks.
-
-Phase 7 deliberately does not require external datasets, model downloads, live Sentinel-2 access, Global Forest Watch access, MQTT network connectivity, or a running Streamlit server. Those are runtime/data integrations and remain outside the final static acceptance gate.
-
-### Research artifact checklist
-
-Before reporting final experimental results, generate and archive the actual run outputs locally (the repository keeps external datasets and generated model/data artifacts out of Git):
-
-    python scripts/evaluate_eurosat.py
-    python scripts/run_phase5_demo.py
-    streamlit run src/forestwatch/dashboard/app.py
-
-The report should distinguish benchmark classifier performance, Forest-Change bi-temporal candidate detection, and simulated priority-aware message delivery. No generated metric should be interpreted as proof of real-world deforestation without the corresponding external validation experiment.
+The Phase 7 gate checks tests, Ruff, source compilation, configuration coherence, model/detection/network smoke checks, and artifact directories. It deliberately does not require external datasets, model downloads, live Sentinel-2/Hansen/GFW access, MQTT connectivity, or a running Streamlit server.

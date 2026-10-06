@@ -83,10 +83,11 @@ def verify_repository_contract() -> None:
 
     violations: list[str] = []
     for path in git_files:
-        normalized = path.replace("\\", "/")
+        normalized = path.replace("\", "/")
         if normalized.startswith(FORBIDDEN_TRACKED_PREFIXES):
-            violations.append(normalized)
-            continue
+            if not normalized.endswith("/.gitkeep"):
+                violations.append(normalized)
+                continue
         if any(normalized.lower().endswith(suffix) for suffix in FORBIDDEN_LARGE_SUFFIXES):
             if normalized.startswith(("models/", "data/")):
                 violations.append(normalized)

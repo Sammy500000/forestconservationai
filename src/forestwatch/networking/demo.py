@@ -1,7 +1,6 @@
 """Deterministic local networking demonstration."""
 from __future__ import annotations
 
-import asyncio
 import time
 from datetime import UTC, datetime
 

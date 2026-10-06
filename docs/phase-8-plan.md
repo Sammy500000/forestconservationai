@@ -11,7 +11,7 @@ The existing project already has a working benchmark change detector and dashboa
 - Input: existing Phase 5/7 detection JSON artifact plus a user-provided local GFC `lossyear` GeoTIFF.
 - GFC source: official Hansen GFC 2024 v1.12.
 - Processing: geospatially align candidate patches to the GFC raster and calculate whether/what fraction of each patch intersects a non-zero loss-year pixel.
-- Output: per-patch validation records and aggregate precision/recall/F1-style overlap statistics.
+- Output: per-event validation records and aggregate GFC agreement statistics. Precision/recall are not claimed because GFC presence within a candidate event is an agreement measure, not a complete reference classification.
 - No online GFW API dependency.
 - No full global GFC download.
 - No database.
@@ -46,11 +46,12 @@ python scripts/validate_against_gfc.py \
 1. Existing `pytest` and Ruff checks remain green.
 2. The validator handles a missing GFC file with a clear actionable message.
 3. Raster CRS/transform are read from metadata; no hard-coded CRS is assumed.
-4. Candidate patch bounds are derived from the patch grid and configured source resolution when geographic bounds are available.
+4. Candidate event bounds are explicitly supplied with a CRS; the validator transforms them to the raster CRS. It never invents geographic geometry from placeholder latitude/longitude.
 5. The validator reports per-event GFC loss coverage and aggregate agreement metrics.
 6. A deterministic synthetic raster/unit-test path exists, so CI does not require external GFC data.
-7. README explains the official GFC source, licensing/data provenance, local download requirement, and scientific limitation.
-8. Dashboard remains unchanged unless the validation artifact is present; when present, it may display a small validation summary.
+7. README explains the official GFC source, local download requirement, and scientific limitation.
+8. Existing Phase 5/6 behavior remains unchanged.
+9. An offline Phase 8 acceptance verifier exercises a synthetic GeoTIFF end to end.
 
 ## Implementation order
 

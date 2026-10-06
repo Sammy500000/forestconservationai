@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from time import perf_counter
 from datetime import UTC, datetime
 from queue import Empty, Queue
 from threading import Event, Lock, Thread
@@ -123,11 +124,11 @@ def publish_event(
 ) -> float:
     """Publish one event and return publish elapsed time in milliseconds."""
     publisher = MQTTPublisher(config or MQTTConfig())
-    started = __import__("time").perf_counter()
+    started = perf_counter()
     try:
         publisher.connect()
         publisher.publish(event)
-        return (__import__("time").perf_counter() - started) * 1000
+        return (perf_counter() - started) * 1000
     finally:
         publisher.close()
 

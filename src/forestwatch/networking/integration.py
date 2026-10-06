@@ -4,8 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from queue import Empty, Queue
-from time import perf_counter
 from threading import Event, Lock, Thread
+from time import perf_counter
 
 from forestwatch.networking.mqtt import MQTTConfig, MQTTPublisher, MQTTSubscriber
 from forestwatch.networking.router import PriorityRouter

@@ -24,7 +24,9 @@ def _load_json(path: Path) -> dict[str, Any] | None:
     return payload
 
 
-def _prediction_mask(example: dict[str, Any], image_size: tuple[int, int], patch_size: int) -> Image.Image:
+def _prediction_mask(
+    example: dict[str, Any], image_size: tuple[int, int], patch_size: int
+) -> Image.Image:
     """Build a display-only patch mask from the recorded Phase 5 candidates."""
     width, height = image_size
     mask = Image.new("L", (width, height), 0)
@@ -43,7 +45,9 @@ def _prediction_mask(example: dict[str, Any], image_size: tuple[int, int], patch
     return mask
 
 
-def _ground_truth_mask(example: dict[str, Any], image_size: tuple[int, int], patch_size: int) -> Image.Image:
+def _ground_truth_mask(
+    example: dict[str, Any], image_size: tuple[int, int], patch_size: int
+) -> Image.Image:
     """Build a display-only patch mask from recorded ground-truth-positive patches."""
     width, height = image_size
     mask = Image.new("L", (width, height), 0)
@@ -62,7 +66,9 @@ def _ground_truth_mask(example: dict[str, Any], image_size: tuple[int, int], pat
     return mask
 
 
-def _find_sample_images(dataset_root: Path, split: str, sample_id: str) -> tuple[Path, Path, Path] | None:
+def _find_sample_images(
+    dataset_root: Path, split: str, sample_id: str
+) -> tuple[Path, Path, Path] | None:
     """Locate the Phase 3/5 before, after, and label images for one sample."""
     base = dataset_root / "images" / split
     paths = tuple(base / part / f"{sample_id}.png" for part in ("A", "B", "label"))
@@ -243,7 +249,9 @@ def main() -> None:
     if isinstance(example_list, list) and example_list:
         sample_ids = [str(example.get("sample_id", "unknown")) for example in example_list]
         selected_id = st.selectbox("Sample", sample_ids)
-        selected = next(example for example in example_list if str(example.get("sample_id")) == selected_id)
+        selected = next(
+            example for example in example_list if str(example.get("sample_id")) == selected_id
+        )
         _show_detection_example(
             selected,
             dataset_root=dataset_root,

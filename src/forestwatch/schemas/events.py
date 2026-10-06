@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from enum import IntEnum, StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class AlertPriority(IntEnum):
@@ -24,6 +24,26 @@ class Coordinates(BaseModel):
     longitude: float = Field(ge=-180, le=180)
 
 
+class EventBounds(BaseModel):
+    """Axis-aligned event footprint with an explicit coordinate reference system."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    left: float
+    bottom: float
+    right: float
+    top: float
+    crs: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_extent(self) -> EventBounds:
+        if self.left >= self.right:
+            raise ValueError("bounds.left must be smaller than bounds.right")
+        if self.bottom >= self.top:
+            raise ValueError("bounds.bottom must be smaller than bounds.top")
+        return self
+
+
 class ForestEvent(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -38,6 +58,7 @@ class ForestEvent(BaseModel):
     sample_id: str | None = None
     patch_row: int | None = Field(default=None, ge=0)
     patch_column: int | None = Field(default=None, ge=0)
+    bounds: EventBounds | None = None
 
     @classmethod
     def example(cls) -> ForestEvent:

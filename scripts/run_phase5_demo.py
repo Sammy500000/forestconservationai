@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -41,7 +42,7 @@ def priority_for_confidence(confidence: float) -> AlertPriority:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the ForestWatch Phase 5 demo.")
+    parser = argparse.ArgumentParser(description="Run the ForestWatch Phase 5 end-to-end demo.")
     parser.add_argument(
         "--dataset-root",
         type=Path,
@@ -83,6 +84,7 @@ def main() -> int:
     model = build_resnet50(num_classes=len(EUROSAT_CHECKPOINT_CLASSES))
     model = load_eurosat_checkpoint(model).to(device).eval()
 
+    started = time.perf_counter()
     detection = analyze_example(
         model,
         examples[0],
@@ -91,6 +93,7 @@ def main() -> int:
         confidence_threshold=confidence_threshold,
         ground_truth_threshold=ground_truth_threshold,
     )
+    detection_seconds = time.perf_counter() - started
 
     router = PriorityRouter(build_default_topology())
     candidate_events: list[dict[str, object]] = []
@@ -110,11 +113,13 @@ def main() -> int:
             patch_row=int(candidate["row"]),
             patch_column=int(candidate["column"]),
         )
+        notification_start = time.perf_counter()
         notifications = deliver_in_memory_concurrently(
             event,
             recipients=RECIPIENTS,
             router=router,
         )
+        notification_latency_ms = (time.perf_counter() - notification_start) * 1000
         candidate_events.append(
             {
                 "event": event.model_dump(mode="json"),
@@ -127,6 +132,7 @@ def main() -> int:
                     }
                     for notification in notifications
                 ],
+                "notification_latency_ms": notification_latency_ms,
             }
         )
 
@@ -139,12 +145,20 @@ def main() -> int:
         "confidence_threshold": confidence_threshold,
         "ground_truth_threshold": ground_truth_threshold,
         "patch_size": patch_size,
-        "detection": detection,
+        "detection_seconds": detection_seconds,
         "candidate_events": candidate_events,
+        "detection_summary": {
+            "patch_count": detection["patch_count"],
+            "candidate_count": detection["candidate_count"],
+            "confusion_matrix": detection["confusion_matrix"],
+            "precision": detection["precision"],
+            "recall": detection["recall"],
+            "f1": detection["f1"],
+        },
     }
-    args.output = args.output.expanduser().resolve()
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(output, indent=2), encoding="utf-8")
+    output_path = args.output.expanduser().resolve()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(output, indent=2), encoding="utf-8")
 
     print("Phase 5 end-to-end demo completed.")
     print(f"Sample: {examples[0].sample_id}")
@@ -156,7 +170,8 @@ def main() -> int:
         print(f"First route: {' -> '.join(notification['path'])}")
         print(f"First route cost: {notification['path_cost']}")
         print(f"Recipients: {len(first['notifications'])}")
-    print(f"Output: {args.output}")
+        print(f"Notification latency: {first['notification_latency_ms']:.3f} ms")
+    print(f"Output: {output_path}")
     return 0
 
 

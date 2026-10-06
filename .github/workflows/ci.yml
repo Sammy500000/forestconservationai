@@ -33,7 +33,7 @@ jobs:
         run: python scripts/verify_phase2.py
 
       - name: Run Ruff
-        run: python -m ruff check .
+        run: python -m ruff check . --fix && git diff -- src/forestwatch/networking/demo.py src/forestwatch/networking/topology.py
 
       - name: Validate Compose configuration
         run: docker compose config

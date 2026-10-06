@@ -1,10 +1,9 @@
 """End-to-end event routing and local MQTT helpers."""
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from queue import Queue
+from queue import Empty, Queue
 from threading import Event, Lock, Thread
 
 from forestwatch.networking.mqtt import MQTTConfig, MQTTPublisher, MQTTSubscriber
@@ -50,7 +49,7 @@ def route_event_to_recipients(
 
 
 class InMemorySubscriber:
-    """Thread-safe recipient sink for a deterministic end-to-end demo."""
+    """Thread-safe recipient sink for the deterministic end-to-end demo."""
 
     def __init__(self, name: str) -> None:
         self.name = name
@@ -69,6 +68,9 @@ def deliver_in_memory_concurrently(
     router: PriorityRouter | None = None,
 ) -> list[RoutedNotification]:
     """Fan one event out concurrently to all recipients."""
+    if not recipients:
+        return []
+
     active_router = router or PriorityRouter(build_default_topology())
     sinks = {name: InMemorySubscriber(name) for name in recipients}
     barrier = Event()
@@ -101,10 +103,17 @@ def deliver_in_memory_concurrently(
     for thread in threads:
         thread.join(timeout=5.0)
 
-    if len(completed.queue) != len(recipients):
+    results: list[RoutedNotification] = []
+    while True:
+        try:
+            results.append(completed.get_nowait())
+        except Empty:
+            break
+
+    if len(results) != len(recipients):
         raise RuntimeError("One or more concurrent notification workers did not complete.")
 
-    return list(completed.queue)
+    return results
 
 
 def publish_event(
@@ -114,11 +123,11 @@ def publish_event(
 ) -> float:
     """Publish one event and return publish elapsed time in milliseconds."""
     publisher = MQTTPublisher(config or MQTTConfig())
-    started = time.perf_counter()
+    started = __import__("time").perf_counter()
     try:
         publisher.connect()
         publisher.publish(event)
-        return (time.perf_counter() - started) * 1000
+        return (__import__("time").perf_counter() - started) * 1000
     finally:
         publisher.close()
 

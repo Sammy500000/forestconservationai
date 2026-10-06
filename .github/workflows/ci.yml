@@ -42,4 +42,4 @@ jobs:
         run: docker compose config
 
       - name: Build application image
-        run: docker build -t forestwatch:phase2
+        run: docker build -t forestwatch:phase2 .

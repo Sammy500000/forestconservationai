@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
+
 import pytest
 
 from forestwatch.validation.gfc import GFCValidationRecord, summarize_records
@@ -30,5 +32,5 @@ def test_summary_agreement_rate() -> None:
 
 def test_record_is_immutable() -> None:
     record = GFCValidationRecord("EVT", 0.2, True, 2024, 2024, 100, 20)
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         record.event_id = "changed"  # type: ignore[misc]

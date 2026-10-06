@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from dataclasses import asdict
 
 from forestwatch.networking.demo import run_demo
 
@@ -12,7 +13,7 @@ def main() -> int:
     payload = {
         "ordered_priorities": result["ordered_priorities"],
         "deliveries": result["deliveries"],
-        "metrics": metrics.__dict__,
+        "metrics": asdict(metrics),
     }
     print(json.dumps(payload, indent=2))
     return 0

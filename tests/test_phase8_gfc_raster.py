@@ -4,16 +4,22 @@ from pathlib import Path
 
 import pytest
 
-rasterio = pytest.importorskip("rasterio")
-from rasterio.coords import BoundingBox
-from rasterio.transform import from_origin
-
 from forestwatch.validation.gfc import validate_event_bounds
 
 
-def test_validate_event_bounds_reads_lossyear_window(tmp_path: Path) -> None:
+@pytest.fixture
+def geospatial_modules():
+    rasterio = pytest.importorskip("rasterio")
+    from rasterio.coords import BoundingBox
+    from rasterio.transform import from_origin
+
+    return rasterio, BoundingBox, from_origin
+
+
+def test_validate_event_bounds_reads_lossyear_window(tmp_path: Path, geospatial_modules) -> None:
     import numpy as np
 
+    rasterio, BoundingBox, from_origin = geospatial_modules
     path = tmp_path / "lossyear.tif"
     data = np.array(
         [
@@ -54,9 +60,10 @@ def test_validate_event_bounds_reads_lossyear_window(tmp_path: Path) -> None:
     assert record.max_loss_year == 2024
 
 
-def test_validate_event_bounds_transforms_crs(tmp_path: Path) -> None:
+def test_validate_event_bounds_transforms_crs(tmp_path: Path, geospatial_modules) -> None:
     import numpy as np
 
+    rasterio, BoundingBox, from_origin = geospatial_modules
     path = tmp_path / "lossyear.tif"
     data = np.ones((2, 2), dtype=np.uint8)
 
@@ -85,9 +92,13 @@ def test_validate_event_bounds_transforms_crs(tmp_path: Path) -> None:
     assert record.loss_fraction == pytest.approx(1.0)
 
 
-def test_validate_event_bounds_outside_raster_is_not_comparable(tmp_path: Path) -> None:
+def test_validate_event_bounds_outside_raster_is_not_comparable(
+    tmp_path: Path,
+    geospatial_modules,
+) -> None:
     import numpy as np
 
+    rasterio, BoundingBox, from_origin = geospatial_modules
     path = tmp_path / "lossyear.tif"
     data = np.zeros((1, 1), dtype=np.uint8)
 
@@ -116,7 +127,9 @@ def test_validate_event_bounds_outside_raster_is_not_comparable(tmp_path: Path) 
     assert record.loss_pixels == 0
 
 
-def test_validate_event_bounds_missing_file(tmp_path: Path) -> None:
+def test_validate_event_bounds_missing_file(tmp_path: Path, geospatial_modules) -> None:
+    _, BoundingBox, _ = geospatial_modules
+
     with pytest.raises(FileNotFoundError, match="GFC raster not found"):
         validate_event_bounds(
             event_id="EVT-MISSING",
@@ -126,9 +139,13 @@ def test_validate_event_bounds_missing_file(tmp_path: Path) -> None:
         )
 
 
-def test_validate_event_bounds_rejects_invalid_threshold(tmp_path: Path) -> None:
+def test_validate_event_bounds_rejects_invalid_threshold(
+    tmp_path: Path,
+    geospatial_modules,
+) -> None:
     import numpy as np
 
+    rasterio, BoundingBox, from_origin = geospatial_modules
     path = tmp_path / "lossyear.tif"
     data = np.zeros((1, 1), dtype=np.uint8)
 

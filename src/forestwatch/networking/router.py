@@ -5,8 +5,8 @@ from dataclasses import dataclass
 
 import networkx as nx
 
-from forestwatch.schemas.events import ForestEvent
 from forestwatch.networking.topology import Route, shortest_route
+from forestwatch.schemas.events import ForestEvent
 
 
 @dataclass(frozen=True)
@@ -24,9 +24,6 @@ class PriorityRouter:
         self.graph = graph if graph is not None else nx.Graph()
 
     def route(self, event: ForestEvent, *, source: str, destination: str) -> RoutedEvent:
-        """Return the shortest path for an event.
-
-        Event priority determines queue order; path cost determines route selection.
-        """
+        """Return the shortest path for an event."""
         route = shortest_route(self.graph, source, destination)
         return RoutedEvent(event=event, route=route)

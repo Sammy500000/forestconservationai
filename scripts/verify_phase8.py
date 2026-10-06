@@ -8,6 +8,9 @@ from pathlib import Path
 
 import numpy as np
 
+# Rasterio/PyProj are the only optional dependencies required by Phase 8.
+# NumPy is already part of the ML extra used by the repository.
+
 try:
     import rasterio
     from rasterio.coords import BoundingBox

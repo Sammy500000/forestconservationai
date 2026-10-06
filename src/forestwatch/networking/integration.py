@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from time import perf_counter
 from queue import Empty, Queue
+from time import perf_counter
 from threading import Event, Lock, Thread
 
 from forestwatch.networking.mqtt import MQTTConfig, MQTTPublisher, MQTTSubscriber

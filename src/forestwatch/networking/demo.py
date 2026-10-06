@@ -11,7 +11,6 @@ from forestwatch.networking.router import PriorityRouter
 from forestwatch.networking.topology import build_default_topology
 from forestwatch.schemas.events import AlertPriority, EventType, ForestEvent
 
-
 RECIPIENTS: tuple[str, ...] = ("node_a", "district", "control_room")
 
 

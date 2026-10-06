@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from time import perf_counter
 from datetime import UTC, datetime
+from time import perf_counter
 from queue import Empty, Queue
 from threading import Event, Lock, Thread
 

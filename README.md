@@ -12,6 +12,26 @@ Phase 1 established the repository and runtime foundation.
 
 Phase 2 implements the land-cover classification layer and the fast reproducible evaluation path.
 
+## Phase 4 status — complete
+
+Phase 4 implements the priority-aware networking layer using a local weighted graph, Dijkstra shortest-path routing, stable priority ordering, concurrent notification delivery, and compact network metrics. MQTT transport is provided through Paho MQTT for the existing local Mosquitto broker. The phase smoke verifier is intentionally broker-independent so the networking logic can be verified without a running network service.
+
+### Phase 4 verification
+
+Run:
+
+    python scripts/verify_phase4.py
+
+Expected output includes:
+
+    Phase 4 smoke verification passed.
+    Priority ordering: passed
+    Dijkstra shortest path: passed
+    Concurrent delivery: passed
+    Network metrics: passed
+
+Event priority controls queue order; Dijkstra selects the minimum-cost route; concurrent delivery fans one event out to multiple recipients. Real MQTT publishing/subscribing is available in `forestwatch.networking.mqtt` and is reserved for the later end-to-end integration phase.
+
 ## Phase 3 status — complete
 
 Phase 3 implements the bi-temporal detection core using the public Forest-Change benchmark as the fast, reproducible input source. The dataset provides aligned pre-change RGB images, post-change RGB images, and binary change masks. The adapter does not commit the external dataset to this repository.

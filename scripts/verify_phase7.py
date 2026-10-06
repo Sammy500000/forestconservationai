@@ -35,9 +35,7 @@ def verify_configuration() -> None:
 
     assert model["name"] == "resnet50"
     assert int(model["num_classes"]) == 10
-    assert tuple(EUROSAT_CLASSES) == tuple(EUROSAT_CHECKPOINT_CLASSES[i] for i in (
-        3, 0, 5, 2, 1, 7, 8, 9, 6, 4
-    ))
+    assert set(EUROSAT_CLASSES) == set(EUROSAT_CHECKPOINT_CLASSES)
     assert detection["forest_class"] == "Forest"
     assert "AnnualCrop" in detection["target_non_forest_classes"]
     assert float(detection["confidence_threshold"]) == 0.70

@@ -11,12 +11,12 @@ import torch
 
 from forestwatch.config import load_yaml_config
 from forestwatch.detection.pipeline import run_detection
+from forestwatch.ml.constants import EUROSAT_CHECKPOINT_CLASSES
 from forestwatch.ml.model import build_resnet50, load_eurosat_checkpoint
 from forestwatch.networking.integration import deliver_in_memory_concurrently
 from forestwatch.networking.priority import PriorityEventQueue
 from forestwatch.networking.router import PriorityRouter
 from forestwatch.networking.topology import build_default_topology
-from forestwatch.ml.constants import EUROSAT_CHECKPOINT_CLASSES
 from forestwatch.schemas.events import AlertPriority, EventType, ForestEvent
 
 

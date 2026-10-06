@@ -6,7 +6,6 @@ from typing import Final
 
 import networkx as nx
 
-
 DEFAULT_EDGES: Final[tuple[tuple[str, str, float], ...]] = (
     ("forest_hub", "node_a", 2.0),
     ("forest_hub", "node_b", 5.0),

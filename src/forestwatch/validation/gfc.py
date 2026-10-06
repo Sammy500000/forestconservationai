@@ -1,9 +1,10 @@
 """Validation against the Hansen Global Forest Change lossyear raster."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 try:
     import rasterio

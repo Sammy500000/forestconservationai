@@ -33,6 +33,11 @@ class ForestEvent(BaseModel):
     confidence: float = Field(ge=0, le=1)
     location: Coordinates
     detected_at: datetime
+    before_class: str | None = None
+    after_class: str | None = None
+    sample_id: str | None = None
+    patch_row: int | None = Field(default=None, ge=0)
+    patch_column: int | None = Field(default=None, ge=0)
 
     @classmethod
     def example(cls) -> ForestEvent:

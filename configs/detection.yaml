@@ -1,4 +1,7 @@
 detection:
+  source: forest_change
+  dataset_root: data/external/forest_change
+  split: test
   forest_class: Forest
   target_non_forest_classes:
     - AnnualCrop
@@ -7,4 +10,4 @@ detection:
     - Residential
   confidence_threshold: 0.70
   patch_size_pixels: 64
-  sentinel_resolution_meters: 10
+  change_mask_threshold: 1

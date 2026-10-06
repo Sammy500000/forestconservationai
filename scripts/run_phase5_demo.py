@@ -179,6 +179,7 @@ def main() -> int:
             "recall": recall,
             "f1": f1,
         },
+        "examples": detection["examples"],
         "candidate_events": event_records,
     }
     output_path = args.output.expanduser().resolve()

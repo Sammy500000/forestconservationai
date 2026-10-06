@@ -1,3 +1,4 @@
+"""Run the Phase 5 end-to-end ForestWatch demonstration."""
 from __future__ import annotations
 
 import argparse
@@ -7,6 +8,7 @@ from pathlib import Path
 
 import torch
 
+from forestwatch.config import load_yaml_config
 from forestwatch.detection.data import discover_examples
 from forestwatch.detection.pipeline import analyze_example
 from forestwatch.ml.constants import EUROSAT_CHECKPOINT_CLASSES
@@ -17,6 +19,9 @@ from forestwatch.networking.topology import build_default_topology
 from forestwatch.schemas.events import AlertPriority, EventType, ForestEvent
 
 
+RECIPIENTS: tuple[str, ...] = ("node_a", "district", "control_room")
+
+
 def choose_device(requested: str) -> torch.device:
     if requested == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -25,8 +30,18 @@ def choose_device(requested: str) -> torch.device:
     return torch.device(requested)
 
 
+def priority_for_confidence(confidence: float) -> AlertPriority:
+    if confidence >= 0.90:
+        return AlertPriority.CRITICAL
+    if confidence >= 0.80:
+        return AlertPriority.HIGH
+    if confidence >= 0.70:
+        return AlertPriority.MEDIUM
+    return AlertPriority.LOW
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the ForestWatch Phase 5 end-to-end demo.")
+    parser = argparse.ArgumentParser(description="Run the ForestWatch Phase 5 demo.")
     parser.add_argument(
         "--dataset-root",
         type=Path,
@@ -35,16 +50,32 @@ def main() -> int:
     parser.add_argument("--split", default="test")
     parser.add_argument("--limit", type=int, default=1)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
-    parser.add_argument("--confidence-threshold", type=float, default=0.70)
-    parser.add_argument("--ground-truth-threshold", type=float, default=0.10)
-    parser.add_argument("--output", type=Path, default=Path("artifacts/metrics/phase5_demo.json"))
+    parser.add_argument("--confidence-threshold", type=float, default=None)
+    parser.add_argument("--ground-truth-threshold", type=float, default=None)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("artifacts/metrics/phase5_demo.json"),
+    )
     args = parser.parse_args()
 
     if args.limit <= 0:
         raise ValueError("--limit must be positive")
 
-    examples = discover_examples(args.dataset_root, split=args.split)
-    examples = examples[: args.limit]
+    detection_config = load_yaml_config("detection.yaml")["detection"]
+    confidence_threshold = (
+        float(args.confidence_threshold)
+        if args.confidence_threshold is not None
+        else float(detection_config["confidence_threshold"])
+    )
+    ground_truth_threshold = (
+        float(args.ground_truth_threshold)
+        if args.ground_truth_threshold is not None
+        else float(detection_config.get("ground_truth_threshold", 0.10))
+    )
+    patch_size = int(detection_config["patch_size_pixels"])
+
+    examples = discover_examples(args.dataset_root, split=args.split)[: args.limit]
     if not examples:
         raise RuntimeError(f"No Forest-Change examples found in split {args.split!r}.")
 
@@ -56,19 +87,20 @@ def main() -> int:
         model,
         examples[0],
         device=device,
-        confidence_threshold=args.confidence_threshold,
-        ground_truth_threshold=args.ground_truth_threshold,
+        patch_size=patch_size,
+        confidence_threshold=confidence_threshold,
+        ground_truth_threshold=ground_truth_threshold,
     )
 
-    candidate_events = []
     router = PriorityRouter(build_default_topology())
+    candidate_events: list[dict[str, object]] = []
+
     for index, candidate in enumerate(detection["candidates"]):
         confidence = float(candidate["confidence"])
-        priority = AlertPriority.CRITICAL if confidence >= 0.90 else AlertPriority.HIGH
         event = ForestEvent(
             event_id=f"PHASE5-{examples[0].sample_id}-{index + 1:04d}",
             event_type=EventType.FOREST_LOSS_CANDIDATE,
-            priority=priority,
+            priority=priority_for_confidence(confidence),
             confidence=confidence,
             location={"latitude": 0.0, "longitude": 0.0},
             detected_at=datetime.now(UTC),
@@ -80,7 +112,7 @@ def main() -> int:
         )
         notifications = deliver_in_memory_concurrently(
             event,
-            recipients=("node_a", "district", "control_room"),
+            recipients=RECIPIENTS,
             router=router,
         )
         candidate_events.append(
@@ -102,10 +134,15 @@ def main() -> int:
         "generated_at": datetime.now(UTC).isoformat(),
         "dataset_root": str(args.dataset_root),
         "split": args.split,
+        "sample_id": examples[0].sample_id,
         "device": str(device),
+        "confidence_threshold": confidence_threshold,
+        "ground_truth_threshold": ground_truth_threshold,
+        "patch_size": patch_size,
         "detection": detection,
         "candidate_events": candidate_events,
     }
+    args.output = args.output.expanduser().resolve()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(output, indent=2), encoding="utf-8")
 
@@ -114,10 +151,11 @@ def main() -> int:
     print(f"Candidates: {len(candidate_events)}")
     print(f"Detection F1 (patch-level): {float(detection['f1']):.4f}")
     if candidate_events:
-        first = candidate_events[0]["notifications"][0]
-        print(f"First route: {' -> '.join(first['path'])}")
-        print(f"First route cost: {first['path_cost']}")
-        print(f"Recipients: {len(first['notifications']) if 'notifications' in first else 3}")
+        first = candidate_events[0]
+        notification = first["notifications"][0]
+        print(f"First route: {' -> '.join(notification['path'])}")
+        print(f"First route cost: {notification['path_cost']}")
+        print(f"Recipients: {len(first['notifications'])}")
     print(f"Output: {args.output}")
     return 0
 

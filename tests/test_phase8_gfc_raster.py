@@ -7,7 +7,6 @@ import pytest
 rasterio = pytest.importorskip("rasterio")
 from rasterio.coords import BoundingBox
 from rasterio.transform import from_origin
-from rasterio.windows import Window
 
 from forestwatch.validation.gfc import validate_event_bounds
 

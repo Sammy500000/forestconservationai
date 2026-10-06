@@ -56,7 +56,10 @@ def verify_synthetic_raster() -> None:
 
     with tempfile.TemporaryDirectory(prefix="forestwatch-phase8-") as tmp:
         raster_path = Path(tmp) / "lossyear.tif"
-        data = np.array([[0, 0, 4, 0], [0, 24, 0, 0], [1, 0, 0, 0], [0, 0, 0, 2]], dtype=np.uint8)
+        data = np.array(
+            [[0, 0, 4, 0], [0, 24, 0, 0], [1, 0, 0, 0], [0, 0, 0, 2]],
+            dtype=np.uint8,
+        )
         with rasterio.open(
             raster_path,
             "w",

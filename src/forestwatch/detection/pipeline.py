@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
 from pathlib import Path
 
 import torch
@@ -23,8 +22,10 @@ def _predict_patches(
     device: torch.device,
     batch_size: int = 32,
 ) -> list[Prediction]:
+    """Predict all patches in batches using the public checkpoint preprocessing."""
     if not patches:
         return []
+
     from forestwatch.ml.data import build_checkpoint_eval_transform
 
     transform = build_checkpoint_eval_transform()
@@ -51,18 +52,29 @@ def analyze_example(
     confidence_threshold: float = 0.70,
     ground_truth_threshold: float = 0.10,
 ) -> dict[str, object]:
-    """Run two-date patch classification and compare candidate events to the mask."""
+    """Run two-date patch classification and compare candidates to the reference mask."""
     before, after, mask = example.load()
     patches = iter_aligned_patches(before, after, mask, patch_size=patch_size)
-    before_predictions = _predict_patches(
-        model, [patch.before for patch in patches], device=device
-    )
-    after_predictions = _predict_patches(model, [patch.after for patch in patches], device=device)
 
-    candidates = []
-    patch_records = []
+    before_predictions = _predict_patches(
+        model,
+        [patch.before for patch in patches],
+        device=device,
+    )
+    after_predictions = _predict_patches(
+        model,
+        [patch.after for patch in patches],
+        device=device,
+    )
+
+    candidates: list[dict[str, object]] = []
+    patch_records: list[dict[str, object]] = []
+
     for patch, before_pred, after_pred in zip(
-        patches, before_predictions, after_predictions, strict=True
+        patches,
+        before_predictions,
+        after_predictions,
+        strict=True,
     ):
         prediction = ChangePrediction(
             before_class=before_pred.class_name,
@@ -76,21 +88,22 @@ def analyze_example(
             column=patch.column,
             confidence_threshold=confidence_threshold,
         )
-        truth_fraction = change_fraction(mask=patch.mask)
+        truth_fraction = change_fraction(patch.mask)
         truth_positive = truth_fraction >= ground_truth_threshold
-        patch_records.append(
-            {
-                "row": patch.row,
-                "column": patch.column,
-                "before_class": before_pred.class_name,
-                "before_confidence": before_pred.confidence,
-                "after_class": after_pred.class_name,
-                "after_confidence": after_pred.confidence,
-                "candidate": candidate is not None,
-                "ground_truth_fraction": truth_fraction,
-                "ground_truth_positive": truth_positive,
-            }
-        )
+
+        record = {
+            "row": patch.row,
+            "column": patch.column,
+            "before_class": before_pred.class_name,
+            "before_confidence": before_pred.confidence,
+            "after_class": after_pred.class_name,
+            "after_confidence": after_pred.confidence,
+            "candidate": candidate is not None,
+            "ground_truth_fraction": truth_fraction,
+            "ground_truth_positive": truth_positive,
+        }
+        patch_records.append(record)
+
         if candidate is not None:
             candidates.append(
                 {
@@ -104,16 +117,16 @@ def analyze_example(
                 }
             )
 
-    predicted_positive = [bool(item["candidate"]) for item in patch_records]
-    truth_positive_values = [bool(item["ground_truth_positive"]) for item in patch_records]
-    tp = sum(pred and truth for pred, truth in zip(predicted_positive, truth_positive_values, strict=True))
-    fp = sum(pred and not truth for pred, truth in zip(predicted_positive, truth_positive_values, strict=True))
-    fn = sum(not pred and truth for pred, truth in zip(predicted_positive, truth_positive_values, strict=True))
-    tn = sum(not pred and not truth for pred, truth in zip(predicted_positive, truth_positive_values, strict=True))
+    predicted = [bool(record["candidate"]) for record in patch_records]
+    truth = [bool(record["ground_truth_positive"]) for record in patch_records]
+    tp = sum(pred and actual for pred, actual in zip(predicted, truth, strict=True))
+    fp = sum(pred and not actual for pred, actual in zip(predicted, truth, strict=True))
+    fn = sum(not pred and actual for pred, actual in zip(predicted, truth, strict=True))
+    tn = sum(not pred and not actual for pred, actual in zip(predicted, truth, strict=True))
 
     precision = tp / (tp + fp) if tp + fp else 0.0
     recall = tp / (tp + fn) if tp + fn else 0.0
-    f1 = (2 * precision * recall / (precision + recall)) if precision + recall else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
 
     return {
         "sample_id": example.sample_id,
@@ -121,7 +134,7 @@ def analyze_example(
         "image_size": list(before.size),
         "patch_count": len(patches),
         "candidate_count": len(candidates),
-        "ground_truth_positive_count": sum(truth_positive_values),
+        "ground_truth_positive_count": sum(truth),
         "confusion_matrix": {"tn": tn, "fp": fp, "fn": fn, "tp": tp},
         "precision": precision,
         "recall": recall,
@@ -142,7 +155,7 @@ def run_detection(
     ground_truth_threshold: float = 0.10,
     limit: int | None = None,
 ) -> dict[str, object]:
-    """Analyze a Forest-Change split and aggregate patch-level detection metrics."""
+    """Run detection across a dataset split and aggregate patch-level metrics."""
     examples = discover_examples(dataset_root, split=split)
     if limit is not None:
         if limit <= 0:
@@ -168,12 +181,13 @@ def run_detection(
         matrix = result["confusion_matrix"]
         for key in total:
             total[key] += int(matrix[key])
+
     tp = total["tp"]
     fp = total["fp"]
     fn = total["fn"]
     precision = tp / (tp + fp) if tp + fp else 0.0
     recall = tp / (tp + fn) if tp + fn else 0.0
-    f1 = (2 * precision * recall / (precision + recall)) if precision + recall else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
 
     return {
         "split": split,
@@ -189,7 +203,7 @@ def run_detection(
 
 
 def save_detection_result(result: dict[str, object], output_path: Path) -> None:
-    """Write detection metrics/results as JSON."""
+    """Write detection output as JSON."""
     output_path = output_path.expanduser().resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(result, indent=2), encoding="utf-8")

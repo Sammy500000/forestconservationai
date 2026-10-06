@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
-from forestwatch.validation.gfc import summarize_records
-from forestwatch.validation.gfc import GFCValidationRecord
+from forestwatch.validation.gfc import GFCValidationRecord, summarize_records
 
 
 def test_summary_empty() -> None:

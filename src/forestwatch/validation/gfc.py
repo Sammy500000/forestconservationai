@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 try:
     import rasterio
@@ -78,12 +78,9 @@ def _transform_bounds(
     return BoundingBox(min(xs), min(ys), max(xs), max(ys))
 
 
-def _intersect_window(
-    dataset: object,
-    window: Window,
-) -> Window | None:
+def _intersect_window(dataset: Any, window: Window) -> Window | None:
     """Intersect a requested window with the dataset extent."""
-    raster_window = dataset.window(*dataset.bounds)  # type: ignore[attr-defined]
+    raster_window = Window(0, 0, dataset.width, dataset.height)
     try:
         return window.intersection(raster_window)
     except ValueError:
@@ -124,6 +121,8 @@ def validate_event_bounds(
             transform=dataset.transform,
         )
         window = _intersect_window(dataset, requested_window)
+        if window is not None:
+            window = window.round_offsets().round_lengths()
         if window is None or window.width <= 0 or window.height <= 0:
             return GFCValidationRecord(
                 event_id=event_id,

@@ -111,3 +111,23 @@ def test_concurrent_in_memory_delivery() -> None:
     assert all(result.event_id == event.event_id for result in results)
     assert all(result.path[0] == "forest_hub" for result in results)
     assert all(result.delivered_at.tzinfo is not None for result in results)
+
+
+def test_phase5_priority_queue_orders_candidate_events() -> None:
+    from forestwatch.networking.priority import PriorityEventQueue
+
+    queue = PriorityEventQueue()
+    base = dict(
+        event_type=EventType.FOREST_LOSS_CANDIDATE,
+        confidence=0.95,
+        location={"latitude": 0.0, "longitude": 0.0},
+        detected_at=datetime.now(UTC),
+    )
+    for event_id, priority in (
+        ("low", AlertPriority.LOW),
+        ("critical", AlertPriority.CRITICAL),
+        ("high", AlertPriority.HIGH),
+    ):
+        queue.put(ForestEvent(event_id=event_id, priority=priority, **base))
+
+    assert [queue.get().event_id for _ in range(3)] == ["critical", "high", "low"]
